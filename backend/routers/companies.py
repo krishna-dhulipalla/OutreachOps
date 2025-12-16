@@ -12,7 +12,7 @@ class CompanySummary(schemas.CompanyBase):
     last_touch_date: Optional[str] = None
     next_follow_up_date: Optional[str] = None
 
-@router.get("/", response_model=List[CompanySummary])
+@router.get("", response_model=List[CompanySummary])
 def read_companies(db: Session = Depends(database.get_db)):
     # This logic is a bit complex for ORM directly if we want efficient aggregation.
     # For MVP, fetching all companies and computing in python or using simple joins.

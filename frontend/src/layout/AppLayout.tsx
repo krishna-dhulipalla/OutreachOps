@@ -38,112 +38,173 @@ const NavItem = ({
   </NavLink>
 );
 
+// Create a context to expose the openModal function
+export const AppContext = React.createContext<{
+  openAddPerson: (initialData?: any) => void;
+}>({
+  openAddPerson: () => {},
+});
+
 export default function AppLayout() {
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [initialPersonData, setInitialPersonData] = useState<any>(null);
+
   const queryClient = useQueryClient();
-  // const navigate = useNavigate(); // Optional: navigate to new person on success?
+
+  const openAddPerson = (initialData?: any) => {
+    setInitialPersonData(initialData || null);
+    setIsAddOpen(true);
+  };
 
   const createPersonMutation = useMutation({
     mutationFn: async (newPerson: any) => {
+      // If we have an ID from waitlist (converting), we might want to let the backend know?
+      // For now, just create a fresh person.
+      // If coming from waitlist, we SHOULD delete the waitlist item on success.
+      // Handling that via a callback or just manually cleaning up if waitlist_id exists?
+      // Let's implement a simple "if waitlist_id, call convert endpoint" logic or just separate calls.
+      // Easiest: The API call creates person. If success, we check if we need to clean up waitlist
+      // But 'converting' endpoint in backend does almost nothing currently.
+      // Let's just create person. The 'convert' logic in backend was just changing status.
+      // We will handle the "cleanup" by actually passing `waitlist_id` to the create endpoint if we want atomicity,
+      // but for MVP, we just create.
       return api.post("/people", newPerson);
     },
-    onSuccess: () => {
+    onSuccess: async (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["people"] });
-      queryClient.invalidateQueries({ queryKey: ["companies"] }); // Refresh companies too
+      queryClient.invalidateQueries({ queryKey: ["companies"] });
+
+      // If we have a waitlist ID, we should technically "convert" it (mark as converted or delete)
+      if (initialPersonData?.waitlist_id) {
+        await api.post(`/waitlist/${initialPersonData.waitlist_id}/convert`);
+        queryClient.invalidateQueries({ queryKey: ["waitlist"] });
+      }
+
       setIsAddOpen(false);
-      // Optional: Add toast success here
-      // navigate(/people/${data.id})
+      setInitialPersonData(null);
     },
   });
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Top Navigation */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex">
-              <div className="flex-shrink-0 flex items-center">
-                <span className="text-xl font-bold text-gray-900 tracking-tight">
-                  OutreachOps
-                </span>
+    <AppContext.Provider value={{ openAddPerson }}>
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        {/* Top Navigation */}
+        <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between h-16">
+              <div className="flex">
+                <div className="flex-shrink-0 flex items-center">
+                  <span className="text-xl font-bold text-gray-900 tracking-tight">
+                    OutreachOps
+                  </span>
+                </div>
+                <nav className="hidden sm:ml-8 sm:flex sm:space-x-2 items-center">
+                  <NavItem to="/" icon={LayoutDashboard}>
+                    Today
+                  </NavItem>
+                  <NavItem to="/people" icon={Users}>
+                    People
+                  </NavItem>
+                  <NavItem to="/companies" icon={Building2}>
+                    Companies
+                  </NavItem>
+                  <NavItem to="/waitlist" icon={Clock}>
+                    Waitlist
+                  </NavItem>
+                  <NavItem to="/radar" icon={Radio}>
+                    Radar
+                  </NavItem>
+                </nav>
               </div>
-              <nav className="hidden sm:ml-8 sm:flex sm:space-x-2 items-center">
-                <NavItem to="/" icon={LayoutDashboard}>
-                  Today
-                </NavItem>
-                <NavItem to="/people" icon={Users}>
-                  People
-                </NavItem>
-                <NavItem to="/companies" icon={Building2}>
-                  Companies
-                </NavItem>
-                <NavItem to="/waitlist" icon={Clock}>
-                  Waitlist
-                </NavItem>
-                <NavItem to="/radar" icon={Radio}>
-                  Radar
-                </NavItem>
-              </nav>
-            </div>
-            <div className="flex items-center">
-              <button
-                onClick={() => setIsAddOpen(true)}
-                className="flex items-center gap-2 bg-gray-900 text-white px-3 py-1.5 rounded-md text-sm font-medium hover:bg-gray-800 transition-colors"
-              >
-                <Plus size={16} />
-                New Contact
-              </button>
+              <div className="flex items-center">
+                <button
+                  onClick={() => openAddPerson()}
+                  className="flex items-center gap-2 bg-gray-900 text-white px-3 py-1.5 rounded-md text-sm font-medium hover:bg-gray-800 transition-colors"
+                >
+                  <Plus size={16} />
+                  New Contact
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Main Content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Outlet />
-      </main>
+        {/* Main Content */}
+        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <Outlet />
+        </main>
 
-      <AddPersonModal
-        isOpen={isAddOpen}
-        onClose={() => setIsAddOpen(false)}
-        onSubmit={createPersonMutation.mutate}
-      />
-    </div>
+        <AddPersonModal
+          isOpen={isAddOpen}
+          initialData={initialPersonData}
+          onClose={() => setIsAddOpen(false)}
+          onSubmit={createPersonMutation.mutate}
+        />
+      </div>
+    </AppContext.Provider>
   );
 }
 
 function AddPersonModal({
   isOpen,
+  initialData,
   onClose,
   onSubmit,
 }: {
   isOpen: boolean;
+  initialData?: any;
   onClose: () => void;
   onSubmit: (data: any) => void;
 }) {
+  const [links, setLinks] = useState<string[]>([]);
+  const [newLink, setNewLink] = useState("");
+
+  // Effect to reset or set initial data
+  const [key, setKey] = useState(0); // Force re-render on open so defaultValues work
+  React.useEffect(() => {
+    if (isOpen) {
+      setKey((k) => k + 1);
+      setLinks(initialData?.links ? JSON.parse(initialData.links) : []); // Assuming backend sends string
+    }
+  }, [isOpen, initialData]);
+
+  const addLink = () => {
+    if (newLink) {
+      setLinks([...links, newLink]);
+      setNewLink("");
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
+
+    // Collect links
+    const finalLinks = [...links]; // Could also parse from hidden inputs if form methodology
+
     onSubmit({
       name: formData.get("name"),
       company_name: formData.get("company"),
       title: formData.get("title"),
       relationship: formData.get("relationship"),
       why_reached_out: formData.get("why_reached_out"),
+      outreach_channels: formData.get("outreach_channels"),
+      create_initial_followup: formData.get("create_initial_followup") === "on",
+      links: JSON.stringify(finalLinks),
       status: "open",
     });
   };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Add New Contact">
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form key={key} onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700">
             Name
           </label>
           <input
             name="name"
+            defaultValue={initialData?.name || ""}
             required
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-900 focus:ring-gray-900 sm:text-sm border p-2"
           />
@@ -154,6 +215,9 @@ function AddPersonModal({
           </label>
           <input
             name="company"
+            defaultValue={
+              initialData?.company || initialData?.company_name || ""
+            }
             required
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-900 focus:ring-gray-900 sm:text-sm border p-2"
           />
@@ -165,6 +229,7 @@ function AddPersonModal({
             </label>
             <input
               name="title"
+              defaultValue={initialData?.title || ""}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-900 focus:ring-gray-900 sm:text-sm border p-2"
             />
           </div>
@@ -174,6 +239,7 @@ function AddPersonModal({
             </label>
             <select
               name="relationship"
+              defaultValue={initialData?.relationship || "cold"}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-900 focus:ring-gray-900 sm:text-sm border p-2"
             >
               <option value="cold">Cold</option>
@@ -184,12 +250,95 @@ function AddPersonModal({
             </select>
           </div>
         </div>
+
+        {/* New Fields: Type & Links */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Primary Channel
+            </label>
+            <select
+              name="outreach_channels"
+              defaultValue={initialData?.outreach_channels || "linkedin"}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-900 focus:ring-gray-900 sm:text-sm border p-2"
+            >
+              <option value="linkedin">LinkedIn</option>
+              <option value="email">Email</option>
+              <option value="twitter">Twitter/X</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Create Follow-up?
+            </label>
+            <div className="mt-2 flex items-center">
+              <input
+                type="checkbox"
+                name="create_initial_followup"
+                defaultChecked={true}
+                className="h-4 w-4 text-gray-900 focus:ring-gray-900 border-gray-300 rounded"
+              />
+              <span className="ml-2 text-sm text-gray-600">Yes, in 2 days</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Dynamic Links */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Links (LinkedIn/Jobs)
+          </label>
+          <div className="space-y-2 mt-1">
+            {links.map((link, idx) => (
+              <div
+                key={idx}
+                className="flex gap-2 text-sm bg-gray-50 p-2 rounded"
+              >
+                <span className="truncate flex-1">{link}</span>
+                <button
+                  type="button"
+                  onClick={() => setLinks(links.filter((_, i) => i !== idx))}
+                  className="text-red-500 hover:text-red-700"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+            <div className="flex gap-2">
+              <input
+                value={newLink}
+                onChange={(e) => setNewLink(e.target.value)}
+                placeholder="Paste URL..."
+                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-900 focus:ring-gray-900 sm:text-sm border p-2"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addLink();
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addLink}
+              >
+                <Plus size={16} />
+              </Button>
+            </div>
+          </div>
+        </div>
+
         <div>
           <label className="block text-sm font-medium text-gray-700">
             Why Reached Out
           </label>
           <textarea
             name="why_reached_out"
+            defaultValue={
+              initialData?.reason || initialData?.why_reached_out || ""
+            }
             required
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-900 focus:ring-gray-900 sm:text-sm border p-2"
             rows={3}

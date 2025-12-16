@@ -28,6 +28,10 @@ class Person(Base):
     title = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     
+    # New fields
+    outreach_channels = Column(Text, nullable=True) # JSON list of strings or comma-separated
+    links = Column(Text, nullable=True) # JSON list of strings or comma-separated
+
     company = sql_relationship("Company", back_populates="contacts")
     touchpoints = sql_relationship("Touchpoint", back_populates="person", cascade="all, delete-orphan")
     follow_ups = sql_relationship("FollowUp", back_populates="person", cascade="all, delete-orphan")
@@ -66,3 +70,7 @@ class Waitlist(Base):
     reason = Column(String, nullable=True)
     priority = Column(String, default="B") # A, B, C
     status = Column(String, default="active")
+    
+    # New fields match Person for easy conversion
+    outreach_channels = Column(Text, nullable=True) # JSON/String
+    links = Column(Text, nullable=True) # JSON/String

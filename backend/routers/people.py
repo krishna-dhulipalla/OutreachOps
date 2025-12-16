@@ -5,7 +5,7 @@ import models, schemas, database
 
 router = APIRouter(prefix="/api/people", tags=["people"])
 
-@router.post("/", response_model=schemas.Person)
+@router.post("", response_model=schemas.Person)
 def create_person(person: schemas.PersonCreate, db: Session = Depends(database.get_db)):
     # 1. Find or Create Company
     company_name = person.company_name.strip()
@@ -32,7 +32,7 @@ def create_person(person: schemas.PersonCreate, db: Session = Depends(database.g
     db.refresh(db_person)
     return db_person
 
-@router.get("/", response_model=List[schemas.Person])
+@router.get("", response_model=List[schemas.Person])
 def read_people(skip: int = 0, limit: int = 100, db: Session = Depends(database.get_db)):
     people = db.query(models.Person).options(
         joinedload(models.Person.company),

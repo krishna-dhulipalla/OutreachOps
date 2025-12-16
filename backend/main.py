@@ -1,13 +1,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from database import engine
+import database
 from models import Base
 from routers import people, radar, dashboard, companies, waitlist
 
-# Create tables
-Base.metadata.create_all(bind=engine)
-
 app = FastAPI(title="OutreachOps API")
+
+@app.on_event("startup")
+def _startup_init_db() -> None:
+    Base.metadata.create_all(bind=database.engine)
+    database.ensure_sqlite_columns(database.engine)
 
 # Configure CORS for local frontend development
 app.add_middleware(

@@ -58,9 +58,13 @@ class PersonBase(BaseModel):
     sponsor_confidence: Optional[str] = "unknown"
     status: Optional[str] = "open"
     title: Optional[str] = None
+    # New fields
+    outreach_channels: Optional[str] = None # JSON string
+    links: Optional[str] = None # JSON string
 
 class PersonCreate(PersonBase):
     company_name: str  # Handle company creation/linking in logic
+    create_initial_followup: Optional[bool] = False # Flag for creating initial follow-up
 
 class Person(PersonBase):
     id: int

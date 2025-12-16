@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useContext } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { Card, Button, Badge, Modal } from "../components/ui/Shared";
 import { Plus, ArrowRight } from "lucide-react";
+import { AppContext } from "../layout/AppLayout";
 
 interface WaitlistItem {
   id: number;
@@ -11,11 +12,14 @@ interface WaitlistItem {
   priority: string;
   reason?: string;
   status: string;
+  links?: string; // JSON string
+  outreach_channels?: string;
 }
 
 export default function WaitlistPage() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const queryClient = useQueryClient();
+  const { openAddPerson } = useContext(AppContext);
 
   const { data: items, isLoading } = useQuery<WaitlistItem[]>({
     queryKey: ["waitlist"],
@@ -35,15 +39,17 @@ export default function WaitlistPage() {
     },
   });
 
-  const convertMutation = useMutation({
-    mutationFn: async (id: number) => {
-      return api.post(`/waitlist/${id}/convert`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["waitlist"] });
-      // Ideally redirect to add contact form pre-filled
-    },
-  });
+  const handleConvert = (item: WaitlistItem) => {
+    // Open the global Add Person modal with pre-filled data
+    openAddPerson({
+      name: item.name,
+      company_name: item.company,
+      reason: item.reason,
+      links: item.links,
+      outreach_channels: item.outreach_channels,
+      waitlist_id: item.id, // Pass ID to handle "conversion" cleanup
+    });
+  };
 
   if (isLoading)
     return <div className="text-center py-10">Loading Waitlist...</div>;
@@ -92,7 +98,7 @@ export default function WaitlistPage() {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => convertMutation.mutate(item.id)}
+                onClick={() => handleConvert(item)}
               >
                 Convert <ArrowRight size={14} className="ml-1" />
               </Button>
@@ -125,14 +131,28 @@ function AddWaitlistModal({
   onClose: () => void;
   onSubmit: (data: any) => void;
 }) {
+  const [links, setLinks] = useState<string[]>([]);
+  const [newLink, setNewLink] = useState("");
+
+  const addLink = () => {
+    if (newLink) {
+      setLinks([...links, newLink]);
+      setNewLink("");
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
+    const finalLinks = [...links];
+
     onSubmit({
       company: formData.get("company"),
       name: formData.get("name"),
       priority: formData.get("priority"),
       reason: formData.get("reason"),
+      outreach_channels: formData.get("outreach_channels"),
+      links: JSON.stringify(finalLinks),
     });
   };
 
@@ -158,21 +178,85 @@ function AddWaitlistModal({
             className="mt-1 block w-full rounded-md border-gray-300 border p-2"
           />
         </div>
+
+        {/* New Fields */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Priority
+            </label>
+            <select
+              name="priority"
+              className="mt-1 block w-full rounded-md border-gray-300 border p-2"
+            >
+              <option value="A">High (A)</option>
+              <option value="B" selected>
+                Medium (B)
+              </option>
+              <option value="C">Low (C)</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Target Channel
+            </label>
+            <select
+              name="outreach_channels"
+              className="mt-1 block w-full rounded-md border-gray-300 border p-2"
+            >
+              <option value="linkedin">LinkedIn</option>
+              <option value="email">Email</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Dynamic Links */}
         <div>
           <label className="block text-sm font-medium text-gray-700">
-            Priority
+            Links (Job/Profile)
           </label>
-          <select
-            name="priority"
-            className="mt-1 block w-full rounded-md border-gray-300 border p-2"
-          >
-            <option value="A">High (A)</option>
-            <option value="B" selected>
-              Medium (B)
-            </option>
-            <option value="C">Low (C)</option>
-          </select>
+          <div className="space-y-2 mt-1">
+            {links.map((link, idx) => (
+              <div
+                key={idx}
+                className="flex gap-2 text-sm bg-gray-50 p-2 rounded"
+              >
+                <span className="truncate flex-1">{link}</span>
+                <button
+                  type="button"
+                  onClick={() => setLinks(links.filter((_, i) => i !== idx))}
+                  className="text-red-500 hover:text-red-700"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+            <div className="flex gap-2">
+              <input
+                value={newLink}
+                onChange={(e) => setNewLink(e.target.value)}
+                placeholder="Paste URL..."
+                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-900 focus:ring-gray-900 sm:text-sm border p-2"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addLink();
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addLink}
+              >
+                <Plus size={16} />
+              </Button>
+            </div>
+          </div>
         </div>
+
         <div>
           <label className="block text-sm font-medium text-gray-700">
             Reason / Notes

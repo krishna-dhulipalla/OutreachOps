@@ -21,11 +21,11 @@ class WaitlistItem(WaitlistItemCreate):
     class Config:
         from_attributes = True
 
-@router.get("/", response_model=List[WaitlistItem])
+@router.get("", response_model=List[WaitlistItem])
 def get_waitlist(db: Session = Depends(database.get_db)):
     return db.query(models.Waitlist).filter(models.Waitlist.status == "active").all()
 
-@router.post("/", response_model=WaitlistItem)
+@router.post("", response_model=WaitlistItem)
 def add_waitlist_item(item: WaitlistItemCreate, db: Session = Depends(database.get_db)):
     db_item = models.Waitlist(**item.model_dump())
     db.add(db_item)
