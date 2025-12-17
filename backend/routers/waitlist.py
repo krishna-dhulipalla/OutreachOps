@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from pydantic import BaseModel
 from datetime import date
-import models, schemas, database
+from .. import models, schemas, database
 
 router = APIRouter(prefix="/api/waitlist", tags=["waitlist"])
 

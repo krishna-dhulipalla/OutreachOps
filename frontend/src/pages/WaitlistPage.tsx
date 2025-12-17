@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { Card, Button, Badge, Modal } from "../components/ui/Shared";
 import { Plus, ArrowRight } from "lucide-react";
-import { AppContext } from "../layout/AppLayout";
+import { AppContext } from "../layout/AppContext";
 
 interface WaitlistItem {
   id: number;
@@ -30,7 +30,7 @@ export default function WaitlistPage() {
   });
 
   const addItemMutation = useMutation({
-    mutationFn: async (newItem: any) => {
+    mutationFn: async (newItem: Record<string, unknown>) => {
       return api.post("/waitlist", newItem);
     },
     onSuccess: () => {
@@ -129,7 +129,7 @@ function AddWaitlistModal({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: any) => void;
+  onSubmit: (data: Record<string, unknown>) => void;
 }) {
   const [links, setLinks] = useState<string[]>([]);
   const [newLink, setNewLink] = useState("");
@@ -187,12 +187,11 @@ function AddWaitlistModal({
             </label>
             <select
               name="priority"
+              defaultValue="B"
               className="mt-1 block w-full rounded-md border-gray-300 border p-2"
             >
               <option value="A">High (A)</option>
-              <option value="B" selected>
-                Medium (B)
-              </option>
+              <option value="B">Medium (B)</option>
               <option value="C">Low (C)</option>
             </select>
           </div>

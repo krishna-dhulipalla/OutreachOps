@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional
-import models, schemas, database
+from .. import models, schemas, database
 
 router = APIRouter(prefix="/api/companies", tags=["companies"])
 
@@ -12,7 +12,7 @@ class CompanySummary(schemas.CompanyBase):
     last_touch_date: Optional[str] = None
     next_follow_up_date: Optional[str] = None
 
-@router.get("", response_model=List[CompanySummary])
+@router.get("", response_model=List[schemas.Company])
 def read_companies(db: Session = Depends(database.get_db)):
     # This logic is a bit complex for ORM directly if we want efficient aggregation.
     # For MVP, fetching all companies and computing in python or using simple joins.
@@ -45,14 +45,20 @@ def read_companies(db: Session = Depends(database.get_db)):
             all_followups.sort(key=lambda x: x.due_date)
             next_due = all_followups[0].due_date.isoformat()
 
-        results.append(CompanySummary(
+        # Build PersonSimple list
+        simple_contacts = [
+            schemas.PersonSimple(id=p.id, name=p.name, title=p.title) for p in comp.contacts
+        ]
+
+        results.append(schemas.Company(
             id=comp.id,
             name=comp.name,
             sponsor_status=comp.sponsor_status,
             notes=comp.notes,
             contact_count=contact_count,
             last_touch_date=last_touch,
-            next_follow_up_date=next_due
+            next_follow_up_date=next_due,
+            contacts=simple_contacts
         ))
         
     return results

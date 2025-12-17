@@ -11,8 +11,19 @@ class CompanyBase(BaseModel):
 class CompanyCreate(CompanyBase):
     pass
 
+class PersonSimple(BaseModel):
+    id: int
+    name: str
+    title: Optional[str] = None
+    
+    model_config = ConfigDict(from_attributes=True)
+
 class Company(CompanyBase):
     id: int
+    contacts: List[PersonSimple] = []
+    contact_count: Optional[int] = 0
+    last_touch_date: Optional[str] = None
+    next_follow_up_date: Optional[str] = None
     
     model_config = ConfigDict(from_attributes=True)
 
@@ -65,6 +76,19 @@ class PersonBase(BaseModel):
 class PersonCreate(PersonBase):
     company_name: str  # Handle company creation/linking in logic
     create_initial_followup: Optional[bool] = False # Flag for creating initial follow-up
+    initial_followup_days: Optional[int] = 2
+
+class PersonUpdate(BaseModel):
+    name: Optional[str] = None
+    company_name: Optional[str] = None
+    linkedin_url: Optional[str] = None
+    relationship: Optional[str] = None
+    why_reached_out: Optional[str] = None
+    sponsor_confidence: Optional[str] = None
+    status: Optional[str] = None
+    title: Optional[str] = None
+    outreach_channels: Optional[str] = None
+    links: Optional[str] = None
 
 class Person(PersonBase):
     id: int

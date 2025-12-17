@@ -1,9 +1,10 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from pathlib import Path
+from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
-from sqlalchemy import text
+from sqlalchemy.orm import sessionmaker
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./outreach_ops.db"
+_DB_PATH = (Path(__file__).resolve().parent / "outreach_ops.db").resolve()
+SQLALCHEMY_DATABASE_URL = f"sqlite:///{_DB_PATH.as_posix()}"
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}

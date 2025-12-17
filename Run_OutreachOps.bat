@@ -1,19 +1,13 @@
 @echo off
 cd /d "%~dp0"
-echo ==========================================
-echo       Starting OutreachOps...
-echo ==========================================
 
-:: Activate virtual environment if it exists
-if exist "backend\venv\Scripts\activate.bat" (
-    call backend\venv\Scripts\activate.bat
-) else (
-    echo [WARNING] Virtual environment not found in backend\venv.
-    echo Assuming Python is installed globally.
-)
+set "ROOT=%cd%"
+if not exist "%ROOT%\logs" mkdir "%ROOT%\logs"
 
-:: Start the app minimized
-start "OutreachOps" /min cmd /c python run.py --all
+set "PY=%ROOT%\backend\venv\Scripts\python.exe"
+if not exist "%PY%" set "PY=python"
 
-:: Pause to keep window open if it crashes
-pause
+echo [%date% %time%] Starting OutreachOps...>> "%ROOT%\logs\outreachops.log"
+
+"%PY%" -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --workers 1 >> "%ROOT%\logs\outreachops.log" 2>&1
+echo [%date% %time%] OutreachOps stopped.>> "%ROOT%\logs\outreachops.log"

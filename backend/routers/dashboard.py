@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
 from datetime import date
 from typing import List, Dict
-import models, schemas, database
+from .. import models, schemas, database
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 

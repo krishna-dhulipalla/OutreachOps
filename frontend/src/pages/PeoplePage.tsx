@@ -5,11 +5,13 @@ import { api } from "../api/client";
 import type { Person } from "../api/client";
 import { Badge, Card } from "../components/ui/Shared";
 import { Search } from "lucide-react";
-import { format } from "date-fns";
+import { formatChicago, toDateAssumingUtcIfNaive } from "../utils/datetime";
 
 export default function PeoplePage() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("created_desc"); // created_desc, created_asc, name_asc
 
   const { data: people, isLoading } = useQuery<Person[]>({
     queryKey: ["people"],
@@ -19,20 +21,32 @@ export default function PeoplePage() {
     },
   });
 
-  const filteredPeople = people?.filter(
-    (p) =>
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.company.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredPeople = people
+    ?.filter((p) => {
+      const matchesSearch =
+        p.name.toLowerCase().includes(search.toLowerCase()) ||
+        p.company.name.toLowerCase().includes(search.toLowerCase());
+      const matchesStatus = statusFilter === "all" || p.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    })
+    .sort((a, b) => {
+      if (sortBy === "name_asc") return a.name.localeCompare(b.name);
+      if (sortBy === "created_asc")
+        return (
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
+      return (
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      ); // default created_desc
+    });
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">People</h1>
-        {/* Global CTA in AppLayout handles adding people */}
       </div>
 
-      <div className="flex gap-4">
+      <div className="flex gap-4 items-center">
         <div className="relative flex-1 max-w-sm">
           <Search
             className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
@@ -46,9 +60,28 @@ export default function PeoplePage() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="border border-gray-300 rounded-md px-3 py-2 text-sm"
+        >
+          <option value="all">All Status</option>
+          <option value="open">Open</option>
+          <option value="waiting">Waiting</option>
+          <option value="closed">Closed</option>
+        </select>
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value)}
+          className="border border-gray-300 rounded-md px-3 py-2 text-sm"
+        >
+          <option value="created_desc">Newest First</option>
+          <option value="created_asc">Oldest First</option>
+          <option value="name_asc">Name (A-Z)</option>
+        </select>
       </div>
 
-      <Card className="overflow-hidden">
+      <Card className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -57,6 +90,9 @@ export default function PeoplePage() {
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Company
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Created
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
@@ -72,7 +108,7 @@ export default function PeoplePage() {
           <tbody className="bg-white divide-y divide-gray-200">
             {isLoading ? (
               <tr>
-                <td colSpan={5} className="px-6 py-4 text-center">
+                <td colSpan={6} className="px-6 py-4 text-center">
                   <div className="flex justify-center items-center gap-2 text-gray-500">
                     <div className="h-4 w-4 rounded-full border-2 border-t-gray-900 border-gray-200 animate-spin"></div>
                     Loading...
@@ -82,7 +118,7 @@ export default function PeoplePage() {
             ) : filteredPeople?.length === 0 ? (
               <tr>
                 <td
-                  colSpan={5}
+                  colSpan={6}
                   className="px-6 py-10 text-center text-gray-500"
                 >
                   <p className="mb-2">No people found.</p>
@@ -111,6 +147,13 @@ export default function PeoplePage() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {person.company.name}
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {formatChicago(person.created_at, {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <Badge color={person.status === "open" ? "green" : "gray"}>
                       {person.status}
@@ -118,20 +161,28 @@ export default function PeoplePage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {person.touchpoints?.length > 0
-                      ? format(
-                          new Date(
-                            person.touchpoints[
-                              person.touchpoints.length - 1
-                            ].date
-                          ),
-                          "MMM d"
+                      ? formatChicago(
+                          person.touchpoints[person.touchpoints.length - 1].date,
+                          { month: "short", day: "numeric" }
                         )
                       : "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {person.follow_ups?.length > 0
-                      ? format(new Date(person.follow_ups[0].due_date), "MMM d")
-                      : "-"}
+                    {(() => {
+                      const nextOpen = (person.follow_ups || [])
+                        .filter((f) => f.status === "open")
+                        .sort((a, b) => {
+                          const da = toDateAssumingUtcIfNaive(a.due_date)?.getTime() ?? 0;
+                          const db = toDateAssumingUtcIfNaive(b.due_date)?.getTime() ?? 0;
+                          return da - db;
+                        })[0];
+                      return nextOpen
+                        ? formatChicago(nextOpen.due_date, {
+                            month: "short",
+                            day: "numeric",
+                          })
+                        : "-";
+                    })()}
                   </td>
                 </tr>
               ))

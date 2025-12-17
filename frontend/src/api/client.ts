@@ -12,6 +12,16 @@ export interface Company {
   name: string;
   sponsor_status: string;
   notes?: string;
+  contacts?: PersonSimple[];
+  contact_count?: number;
+  last_touch_date?: string | null;
+  next_follow_up_date?: string | null;
+}
+
+export interface PersonSimple {
+  id: number;
+  name: string;
+  title?: string;
 }
 
 export interface Person {
@@ -25,6 +35,8 @@ export interface Person {
   why_reached_out: string;
   linkedin_url?: string;
   created_at: string;
+  links?: string;
+  outreach_channels?: string;
   touchpoints: Touchpoint[];
   follow_ups: FollowUp[];
 }

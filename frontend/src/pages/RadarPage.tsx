@@ -30,7 +30,7 @@ export default function RadarPage() {
   });
 
   const saveToWaitlistMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: Record<string, unknown>) => {
       return api.post("/waitlist", data);
     },
     onSuccess: () => {
@@ -46,7 +46,7 @@ export default function RadarPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 mb-2">H-1B Radar</h1>
         <p className="text-gray-600">
@@ -136,7 +136,7 @@ function SaveToWaitlistModal({
 }: {
   item: NewsItem | null;
   onClose: () => void;
-  onSubmit: (data: any) => void;
+  onSubmit: (data: Record<string, unknown>) => void;
 }) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

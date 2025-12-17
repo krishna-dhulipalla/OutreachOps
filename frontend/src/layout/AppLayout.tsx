@@ -3,6 +3,7 @@ import { NavLink, Outlet } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { Modal, Button } from "../components/ui/Shared";
+import { AppContext, type InitialPersonData } from "./AppContext";
 import {
   LayoutDashboard,
   Users,
@@ -19,7 +20,7 @@ const NavItem = ({
   children,
 }: {
   to: string;
-  icon: any;
+  icon: React.ComponentType<{ size?: number }>;
   children: React.ReactNode;
 }) => (
   <NavLink
@@ -38,26 +39,20 @@ const NavItem = ({
   </NavLink>
 );
 
-// Create a context to expose the openModal function
-export const AppContext = React.createContext<{
-  openAddPerson: (initialData?: any) => void;
-}>({
-  openAddPerson: () => {},
-});
-
 export default function AppLayout() {
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const [initialPersonData, setInitialPersonData] = useState<any>(null);
+  const [initialPersonData, setInitialPersonData] =
+    useState<InitialPersonData | null>(null);
 
   const queryClient = useQueryClient();
 
-  const openAddPerson = (initialData?: any) => {
+  const openAddPerson = (initialData?: InitialPersonData) => {
     setInitialPersonData(initialData || null);
     setIsAddOpen(true);
   };
 
   const createPersonMutation = useMutation({
-    mutationFn: async (newPerson: any) => {
+    mutationFn: async (newPerson: Record<string, unknown>) => {
       // If we have an ID from waitlist (converting), we might want to let the backend know?
       // For now, just create a fresh person.
       // If coming from waitlist, we SHOULD delete the waitlist item on success.
@@ -70,7 +65,7 @@ export default function AppLayout() {
       // but for MVP, we just create.
       return api.post("/people", newPerson);
     },
-    onSuccess: async (_, variables) => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["people"] });
       queryClient.invalidateQueries({ queryKey: ["companies"] });
 
@@ -130,7 +125,7 @@ export default function AppLayout() {
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <Outlet />
         </main>
 
@@ -152,9 +147,9 @@ function AddPersonModal({
   onSubmit,
 }: {
   isOpen: boolean;
-  initialData?: any;
+  initialData?: InitialPersonData | null;
   onClose: () => void;
-  onSubmit: (data: any) => void;
+  onSubmit: (data: Record<string, unknown>) => void;
 }) {
   const [links, setLinks] = useState<string[]>([]);
   const [newLink, setNewLink] = useState("");
@@ -164,13 +159,31 @@ function AddPersonModal({
   React.useEffect(() => {
     if (isOpen) {
       setKey((k) => k + 1);
-      setLinks(initialData?.links ? JSON.parse(initialData.links) : []); // Assuming backend sends string
+      if (initialData?.links) {
+        try {
+          const parsed = JSON.parse(initialData.links);
+          setLinks(Array.isArray(parsed) ? parsed : []);
+        } catch {
+          setLinks([]);
+        }
+      } else {
+        setLinks([]);
+      }
+      setNewLink("");
     }
   }, [isOpen, initialData]);
 
+  const normalizeUrl = (raw: string) => {
+    const trimmed = raw.trim();
+    if (!trimmed) return "";
+    if (/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(trimmed)) return trimmed;
+    return `https://${trimmed}`;
+  };
+
   const addLink = () => {
-    if (newLink) {
-      setLinks([...links, newLink]);
+    const normalized = normalizeUrl(newLink);
+    if (normalized) {
+      setLinks([...links, normalized]);
       setNewLink("");
     }
   };
@@ -180,7 +193,9 @@ function AddPersonModal({
     const formData = new FormData(e.target as HTMLFormElement);
 
     // Collect links
-    const finalLinks = [...links]; // Could also parse from hidden inputs if form methodology
+    const finalLinks = [...links];
+    const pendingLink = normalizeUrl(newLink);
+    if (pendingLink) finalLinks.push(pendingLink);
 
     onSubmit({
       name: formData.get("name"),
@@ -190,6 +205,7 @@ function AddPersonModal({
       why_reached_out: formData.get("why_reached_out"),
       outreach_channels: formData.get("outreach_channels"),
       create_initial_followup: formData.get("create_initial_followup") === "on",
+      initial_followup_days: Number(formData.get("initial_followup_days")) || 2,
       links: JSON.stringify(finalLinks),
       status: "open",
     });
@@ -272,14 +288,22 @@ function AddPersonModal({
             <label className="block text-sm font-medium text-gray-700">
               Create Follow-up?
             </label>
-            <div className="mt-2 flex items-center">
+            <div className="mt-2 flex items-center gap-2">
               <input
                 type="checkbox"
                 name="create_initial_followup"
                 defaultChecked={true}
                 className="h-4 w-4 text-gray-900 focus:ring-gray-900 border-gray-300 rounded"
               />
-              <span className="ml-2 text-sm text-gray-600">Yes, in 2 days</span>
+              <span className="text-sm text-gray-600">Yes, in</span>
+              <input
+                type="number"
+                name="initial_followup_days"
+                defaultValue={2}
+                min={1}
+                className="w-16 rounded-md border-gray-300 shadow-sm focus:border-gray-900 focus:ring-gray-900 sm:text-sm border p-1"
+              />
+              <span className="text-sm text-gray-600">days</span>
             </div>
           </div>
         </div>
