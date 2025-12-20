@@ -46,6 +46,8 @@ export interface Touchpoint {
   date: string;
   channel: string;
   outcome?: string;
+  message_preview?: string | null;
+  next_step_action?: string | null;
 }
 
 export interface FollowUp {

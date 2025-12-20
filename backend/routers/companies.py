@@ -2,7 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional
-from .. import models, schemas, database
+try:
+    from .. import models, schemas, database
+except ImportError:  # pragma: no cover
+    import models, schemas, database  # type: ignore
 
 router = APIRouter(prefix="/api/companies", tags=["companies"])
 

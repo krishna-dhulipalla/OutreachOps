@@ -3,9 +3,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pathlib import Path
 from starlette.staticfiles import StaticFiles
-from . import database
-from .models import Base
-from .routers import people, radar, dashboard, companies, waitlist
+
+# Support running as a package (`uvicorn backend.main:app`) and as a module from
+# within `backend/` (`uvicorn main:app`).
+try:
+    from . import database
+    from .models import Base
+    from .status import reconcile_people_statuses
+    from .routers import people, radar, dashboard, companies, waitlist
+except ImportError:  # pragma: no cover
+    import database  # type: ignore
+    from models import Base  # type: ignore
+    from status import reconcile_people_statuses  # type: ignore
+    from routers import people, radar, dashboard, companies, waitlist  # type: ignore
 
 app = FastAPI(title="OutreachOps API")
 
@@ -13,6 +23,12 @@ app = FastAPI(title="OutreachOps API")
 def _startup_init_db() -> None:
     Base.metadata.create_all(bind=database.engine)
     database.ensure_sqlite_columns(database.engine)
+
+    db = database.SessionLocal()
+    try:
+        reconcile_people_statuses(db)
+    finally:
+        db.close()
 
 # Configure CORS for local frontend development
 app.add_middleware(

@@ -216,7 +216,10 @@ export default function PersonDetailPage() {
       return api.post(`/people/${personId}/touchpoints`, data);
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["person", personId] });
+      queryClient.invalidateQueries({ queryKey: ["people"] });
+      queryClient.invalidateQueries({ queryKey: ["companies"] });
       setIsLogOpen(false);
     },
   });
@@ -226,6 +229,7 @@ export default function PersonDetailPage() {
       await api.delete(`/people/${personId}`);
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["people"] });
       queryClient.invalidateQueries({ queryKey: ["companies"] });
       navigate("/people");
@@ -238,6 +242,7 @@ export default function PersonDetailPage() {
       return res.data;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["person", personId] });
       queryClient.invalidateQueries({ queryKey: ["people"] });
       queryClient.invalidateQueries({ queryKey: ["companies"] });
@@ -341,10 +346,10 @@ export default function PersonDetailPage() {
             )}
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => {
+	        <div className="flex gap-2">
+	          <Button
+	            variant="outline"
+	            onClick={() => {
               if (
                 window.confirm(
                   "Are you sure you want to delete this person? This cannot be undone."
@@ -354,14 +359,28 @@ export default function PersonDetailPage() {
               }
             }}
             className="text-red-600 border-red-200 hover:bg-red-50"
-          >
-            Delete
-          </Button>
-          <Button onClick={() => setIsLogOpen(true)}>
-            <MessageSquare size={16} className="mr-2" /> Log Touchpoint
-          </Button>
-          {/* Add Follow-up Button */}
-        </div>
+	          >
+	            Delete
+	          </Button>
+	          <Button
+	            variant="outline"
+	            onClick={() => {
+	              const nextStatus = person.status === "closed" ? "open" : "closed";
+	              const ok = window.confirm(
+	                nextStatus === "closed"
+	                  ? "Mark this person as closed? This will also close any open follow-up tasks."
+	                  : "Reopen this person?"
+	              );
+	              if (ok) updatePersonMutation.mutate({ status: nextStatus });
+	            }}
+	          >
+	            {person.status === "closed" ? "Reopen" : "Close"}
+	          </Button>
+	          <Button onClick={() => setIsLogOpen(true)}>
+	            <MessageSquare size={16} className="mr-2" /> Log Touchpoint
+	          </Button>
+	          {/* Add Follow-up Button */}
+	        </div>
       </div>
 
       <EditPersonModal
@@ -417,6 +436,11 @@ export default function PersonDetailPage() {
                   {tp.outcome && (
                     <p className="text-gray-600 text-sm mt-1">
                       Outcome: {tp.outcome}
+                    </p>
+                  )}
+                  {tp.message_preview && (
+                    <p className="text-gray-700 text-sm mt-2 whitespace-pre-wrap">
+                      {tp.message_preview}
                     </p>
                   )}
                 </div>
