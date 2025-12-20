@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import type { Person } from "../api/client";
-import { Badge, Card } from "../components/ui/Shared";
+import { Badge, Button, Card } from "../components/ui/Shared";
 import { Search } from "lucide-react";
 import { formatChicago, toDateAssumingUtcIfNaive } from "../utils/datetime";
 
@@ -12,6 +12,10 @@ export default function PeoplePage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("created_desc"); // created_desc, created_asc, name_asc
+  const [page, setPage] = useState(1);
+  const perPage = 10;
+
+  const resetToFirstPage = () => setPage(1);
 
   const { data: people, isLoading } = useQuery<Person[]>({
     queryKey: ["people"],
@@ -40,6 +44,14 @@ export default function PeoplePage() {
       ); // default created_desc
     });
 
+  const total = filteredPeople?.length ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / perPage));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const pageItems = filteredPeople?.slice(
+    (safePage - 1) * perPage,
+    safePage * perPage
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -57,12 +69,18 @@ export default function PeoplePage() {
             placeholder="Search people..."
             className="pl-10 pr-4 py-2 border border-gray-300 rounded-md w-full focus:ring-2 focus:ring-gray-900 focus:border-transparent"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              resetToFirstPage();
+            }}
           />
         </div>
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          onChange={(e) => {
+            setStatusFilter(e.target.value);
+            resetToFirstPage();
+          }}
           className="border border-gray-300 rounded-md px-3 py-2 text-sm"
         >
           <option value="all">All Status</option>
@@ -72,13 +90,46 @@ export default function PeoplePage() {
         </select>
         <select
           value={sortBy}
-          onChange={(e) => setSortBy(e.target.value)}
+          onChange={(e) => {
+            setSortBy(e.target.value);
+            resetToFirstPage();
+          }}
           className="border border-gray-300 rounded-md px-3 py-2 text-sm"
         >
           <option value="created_desc">Newest First</option>
           <option value="created_asc">Oldest First</option>
           <option value="name_asc">Name (A-Z)</option>
         </select>
+      </div>
+
+      <div className="flex items-center justify-between text-sm text-gray-600">
+        <div>
+          Showing{" "}
+          {total === 0 ? 0 : (safePage - 1) * perPage + 1}
+          {"–"}
+          {Math.min(safePage * perPage, total)} of {total}
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={safePage <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            Prev
+          </Button>
+          <span className="px-2">
+            Page {safePage} / {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={safePage >= totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          >
+            Next
+          </Button>
+        </div>
       </div>
 
       <Card className="overflow-x-auto">
@@ -128,7 +179,7 @@ export default function PeoplePage() {
                 </td>
               </tr>
             ) : (
-              filteredPeople?.map((person) => (
+              pageItems?.map((person) => (
                 <tr
                   key={person.id}
                   className="hover:bg-gray-50 cursor-pointer"

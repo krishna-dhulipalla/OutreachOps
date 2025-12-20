@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import asc, desc
 from datetime import date
 from typing import List, Dict
 from .. import models, schemas, database
@@ -13,16 +14,19 @@ def get_today_dashboard(db: Session = Depends(database.get_db)):
     # Overdue
     overdue_tasks = db.query(models.FollowUp).options(joinedload(models.FollowUp.person).joinedload(models.Person.company))\
         .filter(models.FollowUp.status == "open", models.FollowUp.due_date < today)\
+        .order_by(asc(models.FollowUp.due_date))\
         .all()
         
     # Due Today
     today_tasks = db.query(models.FollowUp).options(joinedload(models.FollowUp.person).joinedload(models.Person.company))\
         .filter(models.FollowUp.status == "open", models.FollowUp.due_date == today)\
+        .order_by(asc(models.FollowUp.id))\
         .all()
         
     # Upcoming (next 7 days)
     upcoming_tasks = db.query(models.FollowUp).options(joinedload(models.FollowUp.person).joinedload(models.Person.company))\
         .filter(models.FollowUp.status == "open", models.FollowUp.due_date > today)\
+        .order_by(asc(models.FollowUp.due_date))\
         .limit(10).all()
         
     return {
