@@ -11,7 +11,7 @@ export default function PeoplePage() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [sortBy, setSortBy] = useState("created_desc"); // created_desc, created_asc, name_asc
+  const [sortBy, setSortBy] = useState("last_touch_desc"); // last_touch_desc, created_desc, created_asc, name_asc
   const [page, setPage] = useState(1);
   const perPage = 10;
 
@@ -25,6 +25,22 @@ export default function PeoplePage() {
     },
   });
 
+  const lastTouchTime = (person: Person) => {
+    const touchTimes = (person.touchpoints || [])
+      .map((tp) => toDateAssumingUtcIfNaive(tp.date)?.getTime())
+      .filter((t): t is number => typeof t === "number" && !Number.isNaN(t));
+
+    const createdTime = toDateAssumingUtcIfNaive(person.created_at)?.getTime();
+    const candidates = [
+      ...touchTimes,
+      ...(typeof createdTime === "number" && !Number.isNaN(createdTime)
+        ? [createdTime]
+        : []),
+    ];
+
+    return candidates.length ? Math.max(...candidates) : 0;
+  };
+
   const filteredPeople = people
     ?.filter((p) => {
       const matchesSearch =
@@ -34,6 +50,8 @@ export default function PeoplePage() {
       return matchesSearch && matchesStatus;
     })
     .sort((a, b) => {
+      if (sortBy === "last_touch_desc")
+        return lastTouchTime(b) - lastTouchTime(a);
       if (sortBy === "name_asc") return a.name.localeCompare(b.name);
       if (sortBy === "created_asc")
         return (
@@ -96,6 +114,7 @@ export default function PeoplePage() {
           }}
           className="border border-gray-300 rounded-md px-3 py-2 text-sm"
         >
+          <option value="last_touch_desc">Last Touch (Newest)</option>
           <option value="created_desc">Newest First</option>
           <option value="created_asc">Oldest First</option>
           <option value="name_asc">Name (A-Z)</option>
@@ -108,27 +127,6 @@ export default function PeoplePage() {
           {total === 0 ? 0 : (safePage - 1) * perPage + 1}
           {"–"}
           {Math.min(safePage * perPage, total)} of {total}
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={safePage <= 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-          >
-            Prev
-          </Button>
-          <span className="px-2">
-            Page {safePage} / {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={safePage >= totalPages}
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-          >
-            Next
-          </Button>
         </div>
       </div>
 
@@ -211,12 +209,15 @@ export default function PeoplePage() {
                     </Badge>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {person.touchpoints?.length > 0
-                      ? formatChicago(
-                          person.touchpoints[person.touchpoints.length - 1].date,
-                          { month: "short", day: "numeric" }
-                        )
-                      : "-"}
+                    {(() => {
+                      const t = lastTouchTime(person);
+                      return t
+                        ? formatChicago(new Date(t), {
+                            month: "short",
+                            day: "numeric",
+                          })
+                        : "-";
+                    })()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {(() => {
@@ -241,6 +242,30 @@ export default function PeoplePage() {
           </tbody>
         </table>
       </Card>
+
+      <div className="flex items-center justify-end text-sm text-gray-600">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={safePage <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            Prev
+          </Button>
+          <span className="px-2">
+            Page {safePage} / {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={safePage >= totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          >
+            Next
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

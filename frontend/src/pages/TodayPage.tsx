@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import type { FollowUp } from "../api/client";
 import { Card, Button } from "../components/ui/Shared";
-import { CheckCircle, Clock, Calendar, XCircle } from "lucide-react";
+import { CheckCircle, Clock, Calendar, XCircle, Inbox } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatChicago } from "../utils/datetime";
 
@@ -10,6 +10,7 @@ interface DashboardData {
   overdue: FollowUpWithPerson[];
   due_today: FollowUpWithPerson[];
   upcoming: FollowUpWithPerson[];
+  waitlist_count?: number;
 }
 
 interface FollowUpWithPerson extends FollowUp {
@@ -167,9 +168,19 @@ export default function TodayPage() {
 
       {/* Today */}
       <div>
-        <h2 className="text-lg font-bold text-gray-900 mb-3 flex items-center">
-          <CheckCircle className="mr-2 text-green-600" size={20} /> Due Today
-        </h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-bold text-gray-900 flex items-center">
+            <CheckCircle className="mr-2 text-green-600" size={20} /> Due Today
+          </h2>
+          <Link
+            to="/waitlist"
+            className="inline-flex items-center gap-2 rounded-full border border-yellow-200 bg-yellow-50 px-3 py-1 text-sm font-semibold text-yellow-900 hover:bg-yellow-100"
+            title="View Waitlist"
+          >
+            <Inbox size={16} />
+            Waitlist: {data?.waitlist_count ?? 0}
+          </Link>
+        </div>
         {(!data?.due_today || data.due_today.length === 0) && (
           <div className="text-gray-500 italic p-4 border border-dashed rounded-lg text-center">
             No tasks due today. You're all caught up!

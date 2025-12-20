@@ -3,7 +3,10 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import asc, desc
 from datetime import date
 from typing import List, Dict
-from .. import models, schemas, database
+try:
+    from .. import models, schemas, database
+except ImportError:  # pragma: no cover
+    import models, schemas, database  # type: ignore
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
@@ -28,11 +31,18 @@ def get_today_dashboard(db: Session = Depends(database.get_db)):
         .filter(models.FollowUp.status == "open", models.FollowUp.due_date > today)\
         .order_by(asc(models.FollowUp.due_date))\
         .limit(10).all()
+
+    waitlist_count = (
+        db.query(models.Waitlist)
+        .filter(models.Waitlist.status == "active")
+        .count()
+    )
         
     return {
         "overdue": overdue_tasks,
         "due_today": today_tasks,
-        "upcoming": upcoming_tasks
+        "upcoming": upcoming_tasks,
+        "waitlist_count": waitlist_count,
     }
 
 @router.post("/tasks/{task_id}/done")
