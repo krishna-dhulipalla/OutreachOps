@@ -12,6 +12,9 @@ engine = create_engine(
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 _SQLITE_REQUIRED_COLUMNS: dict[str, dict[str, str]] = {
+    "touchpoints": {
+        "direction": "TEXT",
+    },
     "people": {
         "outreach_channels": "TEXT",
         "links": "TEXT",

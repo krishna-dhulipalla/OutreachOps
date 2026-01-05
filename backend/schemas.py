@@ -32,6 +32,7 @@ class TouchpointBase(BaseModel):
     date: datetime
     channel: str
     outcome: Optional[str] = None
+    direction: Optional[str] = None
     message_preview: Optional[str] = None
     next_step_action: Optional[str] = None
     next_step_date: Optional[date] = None

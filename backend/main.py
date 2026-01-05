@@ -9,13 +9,13 @@ from starlette.staticfiles import StaticFiles
 try:
     from . import database
     from .models import Base
-    from .status import reconcile_people_statuses
-    from .routers import people, radar, dashboard, companies, waitlist
+    from .status import backfill_touchpoint_directions, reconcile_people_statuses
+    from .routers import analytics, people, radar, dashboard, companies, waitlist
 except ImportError:  # pragma: no cover
     import database  # type: ignore
     from models import Base  # type: ignore
-    from status import reconcile_people_statuses  # type: ignore
-    from routers import people, radar, dashboard, companies, waitlist  # type: ignore
+    from status import backfill_touchpoint_directions, reconcile_people_statuses  # type: ignore
+    from routers import analytics, people, radar, dashboard, companies, waitlist  # type: ignore
 
 app = FastAPI(title="OutreachOps API")
 
@@ -26,6 +26,7 @@ def _startup_init_db() -> None:
 
     db = database.SessionLocal()
     try:
+        backfill_touchpoint_directions(db)
         reconcile_people_statuses(db)
     finally:
         db.close()
@@ -49,6 +50,7 @@ app.include_router(radar.router)
 app.include_router(dashboard.router)
 app.include_router(companies.router)
 app.include_router(waitlist.router)
+app.include_router(analytics.router)
 
 _FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 if _FRONTEND_DIST.exists():

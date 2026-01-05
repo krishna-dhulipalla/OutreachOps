@@ -46,6 +46,7 @@ export interface Touchpoint {
   date: string;
   channel: string;
   outcome?: string;
+  direction?: string;
   message_preview?: string | null;
   next_step_action?: string | null;
 }

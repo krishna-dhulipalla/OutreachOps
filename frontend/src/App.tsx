@@ -7,6 +7,7 @@ import PersonDetailPage from "./pages/PersonDetailPage";
 import CompaniesPage from "./pages/CompaniesPage";
 import WaitlistPage from "./pages/WaitlistPage";
 import RadarPage from "./pages/RadarPage";
+import AnalyticsPage from "./pages/AnalyticsPage";
 
 const queryClient = new QueryClient();
 
@@ -22,6 +23,7 @@ function App() {
             <Route path="companies" element={<CompaniesPage />} />
             <Route path="waitlist" element={<WaitlistPage />} />
             <Route path="radar" element={<RadarPage />} />
+            <Route path="analytics" element={<AnalyticsPage />} />
 
             {/* Fallback to Today */}
             <Route path="*" element={<Navigate to="/" replace />} />

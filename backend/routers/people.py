@@ -6,10 +6,15 @@ from sqlalchemy.orm import Session, joinedload
 
 try:
     from .. import database, models, schemas
-    from ..status import close_person, normalize_token, outcome_is_closed
+    from ..status import (
+        close_person,
+        infer_direction,
+        normalize_token,
+        outcome_is_closed,
+    )
 except ImportError:  # pragma: no cover
     import database, models, schemas  # type: ignore
-    from status import close_person, normalize_token, outcome_is_closed  # type: ignore
+    from status import close_person, infer_direction, normalize_token, outcome_is_closed  # type: ignore
 
 router = APIRouter(prefix="/api/people", tags=["people"])
 
@@ -178,7 +183,11 @@ def add_touchpoint(
         raise HTTPException(status_code=404, detail="Person not found")
 
     db_touchpoint = models.Touchpoint(
-        **touchpoint.model_dump(exclude={"next_step_date"}), person_id=person_id
+        **{
+            **touchpoint.model_dump(exclude={"next_step_date"}),
+            "direction": infer_direction(touchpoint.direction, touchpoint.outcome),
+        },
+        person_id=person_id,
     )
     db.add(db_touchpoint)
 

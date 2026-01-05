@@ -44,6 +44,7 @@ class Touchpoint(Base):
     date = Column(DateTime, default=datetime.utcnow)
     channel = Column(String, nullable=False)  # 'LinkedIn DM', 'email', etc.
     outcome = Column(String)  # 'sent', 'replied'
+    direction = Column(String, nullable=True)  # 'outbound', 'inbound', 'other'
     message_preview = Column(Text, nullable=True)
     next_step_action = Column(String, nullable=True)
     

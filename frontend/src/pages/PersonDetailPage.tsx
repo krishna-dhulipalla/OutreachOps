@@ -527,6 +527,13 @@ function TouchpointModal({
   onSubmit: (data: Record<string, unknown>) => void;
 }) {
   const [outcome, setOutcome] = useState("sent");
+  const [direction, setDirection] = useState("outbound");
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+    setOutcome("sent");
+    setDirection("outbound");
+  }, [isOpen]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -536,6 +543,7 @@ function TouchpointModal({
       message_preview: formData.get("message"),
       date: new Date().toISOString(),
       outcome: formData.get("outcome"),
+      direction: formData.get("direction"),
       next_step_action: formData.get("next_step_action"),
       next_step_date: formData.get("next_step_date"),
     });
@@ -544,7 +552,7 @@ function TouchpointModal({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Log Touchpoint">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700">
               Channel
@@ -554,10 +562,26 @@ function TouchpointModal({
               className="mt-1 block w-full rounded-md border-gray-300 border p-2"
             >
               <option>LinkedIn DM</option>
+              <option>LinkedIn InMail</option>
               <option>Email</option>
               <option>Connection Request</option>
               <option>Call</option>
               <option>In Person</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Who Initiated?
+            </label>
+            <select
+              name="direction"
+              value={direction}
+              onChange={(e) => setDirection(e.target.value)}
+              className="mt-1 block w-full rounded-md border-gray-300 border p-2"
+            >
+              <option value="outbound">I reached out (Outbound)</option>
+              <option value="inbound">They reached me (Inbound)</option>
+              <option value="other">Other</option>
             </select>
           </div>
           <div>
@@ -567,7 +591,12 @@ function TouchpointModal({
             <select
               name="outcome"
               className="mt-1 block w-full rounded-md border-gray-300 border p-2"
-              onChange={(e) => setOutcome(e.target.value)}
+              onChange={(e) => {
+                const v = e.target.value;
+                setOutcome(v);
+                if (v === "sent") setDirection("outbound");
+                if (v === "replied") setDirection("inbound");
+              }}
             >
               <option value="sent">Sent / Left Message</option>
               <option value="replied">Replied</option>

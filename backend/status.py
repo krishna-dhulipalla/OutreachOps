@@ -30,6 +30,32 @@ def outcome_is_closed(outcome: Optional[str]) -> bool:
     return False
 
 
+def normalize_direction(value: Optional[str]) -> Optional[str]:
+    token = normalize_token(value)
+    if not token:
+        return None
+    if token in {"outbound", "out"}:
+        return "outbound"
+    if token in {"inbound", "in"}:
+        return "inbound"
+    if token in {"other", "unknown"}:
+        return "other"
+    return token
+
+
+def infer_direction(value: Optional[str], outcome: Optional[str]) -> str:
+    normalized = normalize_direction(value)
+    if normalized:
+        return normalized
+
+    outcome_token = normalize_token(outcome)
+    if outcome_token == "sent":
+        return "outbound"
+    if outcome_token in {"replied", "reply"}:
+        return "inbound"
+    return "other"
+
+
 def close_person(person: models.Person, db: Session) -> None:
     person.status = "closed"
     for follow_up in (
@@ -81,3 +107,15 @@ def reconcile_people_statuses(db: Session) -> int:
     db.commit()
 
     return updated_count
+
+
+def backfill_touchpoint_directions(db: Session) -> int:
+    updated = 0
+    for tp in db.query(models.Touchpoint).all():
+        desired = infer_direction(tp.direction, tp.outcome)
+        if normalize_direction(tp.direction) != desired:
+            tp.direction = desired
+            updated += 1
+    if updated:
+        db.commit()
+    return updated
