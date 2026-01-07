@@ -39,6 +39,15 @@ export default function WaitlistPage() {
     },
   });
 
+  const deleteItemMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return api.delete(`/waitlist/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["waitlist"] });
+    },
+  });
+
   const handleConvert = (item: WaitlistItem) => {
     // Open the global Add Person modal with pre-filled data
     openAddPerson({
@@ -94,7 +103,19 @@ export default function WaitlistPage() {
                 </p>
               )}
             </div>
-            <div className="mt-4 flex justify-end">
+            <div className="mt-4 flex justify-between">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                onClick={() => {
+                  if (confirm("Delete this item?")) {
+                    deleteItemMutation.mutate(item.id);
+                  }
+                }}
+              >
+                Delete
+              </Button>
               <Button
                 size="sm"
                 variant="outline"

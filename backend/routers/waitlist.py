@@ -48,3 +48,13 @@ def convert_to_contact(item_id: int, db: Session = Depends(database.get_db)):
     item.status = "converted"
     db.commit()
     return {"message": "Marked as converted"}
+
+@router.delete("/{item_id}")
+def delete_waitlist_item(item_id: int, db: Session = Depends(database.get_db)):
+    item = db.query(models.Waitlist).filter(models.Waitlist.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+        
+    db.delete(item)
+    db.commit()
+    return {"ok": True}
